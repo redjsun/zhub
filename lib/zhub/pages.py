@@ -208,6 +208,17 @@ class DeviceController:
         diverted = (self.setting("thumb-scroll-mode") or {}).get("value")
         return mode if diverted or mode == "hscroll" else "hscroll"
 
+    def thumbwheel_sensitivity(self):
+        config = actions.device_config(actions.load(), self.id)
+        return config.get("thumbwheel_sensitivity", actions.DEFAULT_THUMB_WHEEL_SENSITIVITY)
+
+    def set_thumbwheel_sensitivity(self, value):
+        data = actions.load()
+        actions.device_config(data, self.id)["thumbwheel_sensitivity"] = int(value)
+        actions.save(data)
+        self.client.reload_actions()
+        self.update(self.info)
+
     def set_thumbwheel_mode(self, mode):
         data = actions.load()
         actions.device_config(data, self.id)["thumbwheel"] = mode
@@ -219,6 +230,19 @@ class DeviceController:
 
 def _scrolled(child):
     return Gtk.ScrolledWindow(child=child, hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
+
+
+def thumbwheel_sensitivity_row(device):
+    lo, hi = actions.THUMB_WHEEL_SENSITIVITY
+    labels = {lo: "Lenta", actions.DEFAULT_THUMB_WHEEL_SENSITIVITY: "Padrão", hi: "Rápida"}
+    row = _ScaleRow(
+        "Sensibilidade",
+        list(range(lo, hi + 1)),
+        lambda v: f"{v} · {labels[v]}" if v in labels else str(v),
+        device.set_thumbwheel_sensitivity,
+    )
+    row.set_value(device.thumbwheel_sensitivity())
+    return row
 
 
 class ButtonsPage(Gtk.Box):
@@ -331,12 +355,15 @@ class ButtonsPage(Gtk.Box):
             row.connect("activated", lambda _r, m=mode: self.device.set_thumbwheel_mode(m))
             group.add(row)
         box.append(group)
+        extra = Adw.PreferencesGroup()
+        if current != "hscroll":
+            extra.add(thumbwheel_sensitivity_row(self.device))
         invert = self.device.setting("thumb-scroll-invert")
         if invert:
-            extra = Adw.PreferencesGroup()
             row = Adw.SwitchRow(title="Inverter direção", active=bool(invert["value"]))
             row.connect("notify::active", lambda r, _p: self.device.set("thumb-scroll-invert", r.get_active()))
             extra.add(row)
+        if extra.get_first_child() is not None:
             box.append(extra)
         return box
 
@@ -541,6 +568,8 @@ class PointerPage(Gtk.Box):
             row.connect("notify::selected", lambda r, _p: None if self._updating else device.set_thumbwheel_mode(modes[r.get_selected()]))
             thumb.add(row)
             self._rows["thumbwheel"] = row
+            self._thumb_sensitivity = thumbwheel_sensitivity_row(device)
+            thumb.add(self._thumb_sensitivity)
             self._toggle(thumb, "thumb-scroll-invert", "Inverter direção", None)
             self.page.add(thumb)
 
@@ -598,7 +627,10 @@ class PointerPage(Gtk.Box):
             for name, row in self._rows.items():
                 setting = self.device.setting(name)
                 if name == "thumbwheel":
-                    row.set_selected(list(actions.THUMB_WHEEL_MODES).index(self.device.thumbwheel_mode()))
+                    mode = self.device.thumbwheel_mode()
+                    row.set_selected(list(actions.THUMB_WHEEL_MODES).index(mode))
+                    self._thumb_sensitivity.set_visible(mode != "hscroll")
+                    self._thumb_sensitivity.set_value(self.device.thumbwheel_sensitivity())
                 elif name == "smartshift-on":
                     value = (self.device.setting("smart-shift") or {}).get("value")
                     on = value is not None and value < 50

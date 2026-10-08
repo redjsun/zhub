@@ -135,14 +135,25 @@ ACTION_GROUPS = [
 
 ACTIONS = {a.id: a for _group, actions in ACTION_GROUPS for a in actions}
 
-# Thumb wheel: (label, icon, keys when rolled forward, keys when rolled back, rule threshold)
+# Thumb wheel: (label, icon, keys when rolled forward, keys when rolled back, base threshold)
+# The diverted thumb wheel reports 120 units per full turn on the MX Master 3S. The base
+# threshold is the rotation needed per action at the default sensitivity.
 THUMB_WHEEL_MODES = {
     "hscroll": ("Rolagem horizontal", "object-flip-horizontal-symbolic", None, None, None),
-    "volume": ("Volume", "audio-volume-high-symbolic", ["XF86_AudioRaiseVolume"], ["XF86_AudioLowerVolume"], 30),
-    "zoom": ("Zoom", "zoom-in-symbolic", ["Control_L", "plus"], ["Control_L", "minus"], 40),
-    "tabs": ("Trocar de aba", "tab-new-symbolic", ["Control_L", "Page_Down"], ["Control_L", "Page_Up"], 60),
-    "workspaces": ("Trocar de workspace", "view-grid-symbolic", ["Super_L", "Page_Down"], ["Super_L", "Page_Up"], 90),
+    "volume": ("Volume", "audio-volume-high-symbolic", ["XF86_AudioRaiseVolume"], ["XF86_AudioLowerVolume"], 8),
+    "zoom": ("Zoom", "zoom-in-symbolic", ["Control_L", "plus"], ["Control_L", "minus"], 12),
+    "tabs": ("Trocar de aba", "tab-new-symbolic", ["Control_L", "Page_Down"], ["Control_L", "Page_Up"], 12),
+    "workspaces": ("Trocar de workspace", "view-grid-symbolic", ["Super_L", "Page_Down"], ["Super_L", "Page_Up"], 20),
 }
+
+THUMB_WHEEL_SENSITIVITY = (1, 10)
+DEFAULT_THUMB_WHEEL_SENSITIVITY = 5
+
+
+def thumbwheel_threshold(base, sensitivity):
+    """Rotation needed per action: the default sensitivity uses the base, 10 halves it, 1 needs 5x more."""
+    return max(1, round(base * DEFAULT_THUMB_WHEEL_SENSITIVITY / sensitivity))
+
 
 _KEY_LABELS = {
     "Control_L": "Ctrl",
@@ -179,6 +190,7 @@ def default_device_config():
             "right": {"action": "workspace-next"},
         },
         "thumbwheel": "hscroll",
+        "thumbwheel_sensitivity": DEFAULT_THUMB_WHEEL_SENSITIVITY,
     }
 
 
@@ -266,7 +278,9 @@ def compile_rules(data):
                     rules.append({"Rule": [device, {"Key": [button, "pressed"]}, effect]})
         mode = THUMB_WHEEL_MODES.get(config.get("thumbwheel"))
         if mode and mode[2]:
-            _label, _icon, forward, back, threshold = mode
+            _label, _icon, forward, back, base = mode
+            sensitivity = config.get("thumbwheel_sensitivity", DEFAULT_THUMB_WHEEL_SENSITIVITY)
+            threshold = thumbwheel_threshold(base, sensitivity)
             rules.append({"Rule": [device, {"Test": ["thumb_wheel_up", threshold]}, {"KeyPress": [back, "click"]}]})
             rules.append({"Rule": [device, {"Test": ["thumb_wheel_down", threshold]}, {"KeyPress": [forward, "click"]}]})
     return rules
