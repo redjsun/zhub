@@ -7,6 +7,8 @@ Painel para personalizar mouses e teclados Logitech no Linux, com visual moderno
 > e não tem nenhuma afiliação com a Logitech. "Logitech", "MX Master" e "Logi" são marcas
 > registradas dos seus donos.
 
+![Aba Botões do ZHUB com o MX Master 3S](docs/zhub/botoes.png)
+
 ## O que dá para fazer
 
 - **Botões**: um desenho interativo do mouse com pontos clicáveis em cada botão. Você
@@ -22,6 +24,32 @@ Painel para personalizar mouses e teclados Logitech no Linux, com visual moderno
 - Outros dispositivos suportados pelo Solaar aparecem com as configurações genéricas.
 
 Testado com o MX Master 3S via Bluetooth no Ubuntu 24.04 (GNOME, X11).
+
+## Visual
+
+**Seus dispositivos**: a tela inicial lista os mouses e teclados com bateria e status.
+
+![Tela inicial com os dispositivos](docs/zhub/dispositivos.png)
+
+**Botões**: clique em um ponto do mouse e escolha a ação no painel lateral.
+
+![Painel de ações do botão Voltar](docs/zhub/botoes-acoes.png)
+
+**Roda do polegar**: função e sensibilidade, direto no desenho do mouse.
+
+![Configuração da roda do polegar](docs/zhub/roda-do-polegar.png)
+
+**Gestos**: editor visual em cruz, com predefinições.
+
+![Editor visual de gestos](docs/zhub/gestos.png)
+
+**Apontar e rolar**: DPI, modo da roda, SmartShift e rolagem.
+
+![Configurações de ponteiro e rolagem](docs/zhub/apontar-e-rolar.png)
+
+**Easy-Switch**: os três canais e o computador conectado agora.
+
+![Canais Easy-Switch](docs/zhub/easy-switch.png)
 
 ## Como funciona
 

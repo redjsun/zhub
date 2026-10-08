@@ -20,6 +20,8 @@ from .widgets import battery_icon
 from .widgets import battery_text
 
 REPROG = "reprogrammable-keys"
+FREESPIN, RATCHET = 1, 2  # scroll-ratchet choices
+SMARTSHIFT_OFF = 50  # smart-shift threshold meaning "always ratcheted"
 DIVERT = "divert-keys"
 
 # settings handled by dedicated widgets, never shown in the generic list
@@ -526,7 +528,7 @@ class PointerPage(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.device = device
         self._updating = False
-        self._smartshift_last = 12
+        self._smartshift_last = 12  # device threshold used when SmartShift is switched back on
         self.page = Adw.PreferencesPage()
         self.append(self.page)
         self._rows = {}
@@ -541,24 +543,29 @@ class PointerPage(Gtk.Box):
             self.page.add(group)
 
         wheel = Adw.PreferencesGroup(title="Roda de rolagem")
-        if device.setting("smart-shift"):
-            row = Adw.SwitchRow(title="SmartShift", subtitle="Libera a roda sozinha quando você rola rápido")
-            row.connect("notify::active", self._smartshift_toggled)
-            wheel.add(row)
-            self._rows["smartshift-on"] = row
-            sensitivity = _ScaleRow("Sensibilidade", list(range(1, 50)), lambda v: str(v), self._smartshift_changed)
-            wheel.add(sensitivity)
-            self._rows["smart-shift"] = sensitivity
         if device.setting("scroll-ratchet"):
             ratchet = device.setting("scroll-ratchet")
-            labels = {1: "Rotação livre", 2: "Catraca"}
+            labels = {RATCHET: "Catraca", FREESPIN: "Rotação livre"}
             row = Adw.ComboRow(title="Modo da roda", model=Gtk.StringList.new([labels.get(i, n) for i, n in ratchet["choices"]]))
             row.connect("notify::selected", lambda r, _p: self._combo_changed("scroll-ratchet", r))
             wheel.add(row)
             self._rows["scroll-ratchet"] = row
+        if device.setting("smart-shift"):
+            row = Adw.SwitchRow(title="SmartShift", subtitle="No modo catraca, libera a roda sozinha quando você rola rápido")
+            row.connect("notify::active", self._smartshift_toggled)
+            wheel.add(row)
+            self._rows["smartshift-on"] = row
+            sensitivity = _ScaleRow(
+                "Sensibilidade do SmartShift",
+                list(range(1, SMARTSHIFT_OFF)),
+                lambda v: f"{v} · mais sensível" if v > 40 else (f"{v} · menos sensível" if v < 10 else str(v)),
+                self._smartshift_changed,
+            )
+            wheel.add(sensitivity)
+            self._rows["smart-shift"] = sensitivity
         self._toggle(wheel, "hires-smooth-resolution", "Rolagem suave", "Rolagem em alta resolução, pixel a pixel")
         self._toggle(wheel, "hires-smooth-invert", "Rolagem natural", "Inverte a direção da rolagem")
-        if wheel.get_first_child() and device.setting("hires-smooth-resolution") or device.setting("smart-shift"):
+        if any(device.setting(n) for n in ("scroll-ratchet", "smart-shift", "hires-smooth-resolution", "hires-smooth-invert")):
             self.page.add(wheel)
 
         if device.setting("thumb-scroll-mode") or device.setting("thumb-scroll-invert"):
@@ -612,14 +619,20 @@ class PointerPage(Gtk.Box):
         setting = self.device.setting(name)
         self.device.set(name, setting["choices"][row.get_selected()][0])
 
+    # The device stores a speed threshold (1..49, 50 = always ratcheted); the
+    # slider shows sensitivity, where higher means it frees the wheel sooner.
     def _smartshift_toggled(self, row, _param):
-        self._rows["smart-shift"].set_visible(row.get_active())
+        self._rows["smart-shift"].set_visible(row.get_active() and self._ratcheted())
         if not self._updating:
-            self.device.set("smart-shift", self._smartshift_last if row.get_active() else 50)
+            self.device.set("smart-shift", self._smartshift_last if row.get_active() else SMARTSHIFT_OFF)
 
     def _smartshift_changed(self, value):
-        self._smartshift_last = value
-        self.device.set("smart-shift", value)
+        self._smartshift_last = SMARTSHIFT_OFF - value
+        self.device.set("smart-shift", self._smartshift_last)
+
+    def _ratcheted(self):
+        ratchet = self.device.setting("scroll-ratchet")
+        return ratchet is None or ratchet.get("value") != FREESPIN
 
     def refresh(self):
         self._updating = True
@@ -633,15 +646,17 @@ class PointerPage(Gtk.Box):
                     self._thumb_sensitivity.set_value(self.device.thumbwheel_sensitivity())
                 elif name == "smartshift-on":
                     value = (self.device.setting("smart-shift") or {}).get("value")
-                    on = value is not None and value < 50
+                    ratcheted = self._ratcheted()
+                    on = value is not None and value < SMARTSHIFT_OFF
+                    row.set_visible(ratcheted)
                     row.set_active(on)
-                    self._rows["smart-shift"].set_visible(on)
+                    self._rows["smart-shift"].set_visible(on and ratcheted)
                 elif setting is None or setting.get("value") is None:
                     continue
                 elif name == "smart-shift":
-                    if setting["value"] < 50:
+                    if 1 < setting["value"] < SMARTSHIFT_OFF:
                         self._smartshift_last = setting["value"]
-                        row.set_value(setting["value"])
+                    row.set_value(SMARTSHIFT_OFF - self._smartshift_last)
                 elif isinstance(row, _ScaleRow):
                     row.set_value(setting["value"])
                 elif isinstance(row, Adw.SwitchRow):
@@ -717,7 +732,7 @@ class DevicePage(Adw.NavigationPage):
         super().__init__(title=device.info["name"], tag=device.id)
         self.device = device
 
-        stack = Adw.ViewStack()
+        stack = self.stack = Adw.ViewStack()
         stack.add_titled_with_icon(ButtonsPage(device), "buttons", "Botões", "input-mouse-symbolic")
         if device.cid(actions.GESTURE) is not None and device.setting(DIVERT):
             stack.add_titled_with_icon(GesturesPage(device), "gestures", "Gestos", "input-touchpad-symbolic")

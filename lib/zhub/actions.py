@@ -35,7 +35,7 @@ BUTTON_LABELS = {
     BACK: "Voltar",
     FORWARD: "Avançar",
     GESTURE: "Botão de gestos",
-    SMART_SHIFT: "Modo da roda",
+    SMART_SHIFT: "Botão SmartShift",
 }
 
 GESTURE_DIRECTIONS = {

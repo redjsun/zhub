@@ -52,7 +52,7 @@ class Window(Adw.ApplicationWindow):
             column_spacing=18,
             row_spacing=18,
             valign=Gtk.Align.START,
-            halign=Gtk.Align.CENTER,
+            halign=Gtk.Align.START,
         )
         self.status = Adw.StatusPage(
             icon_name="input-mouse-symbolic",
