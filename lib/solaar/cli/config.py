@@ -24,7 +24,7 @@ from logitech_receiver.settings_validator import Range
 
 from solaar import configuration
 
-APP_ID = "io.github.pwr_solaar.solaar"
+APP_ID = "io.github.zhub.Service"
 
 
 def _parse_int_or_hex(s) -> int | None:

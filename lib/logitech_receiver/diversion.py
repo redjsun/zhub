@@ -1545,12 +1545,25 @@ def _save_config_rule_file(file_name: str = _file_path):
     return True
 
 
+def _logi_rules() -> Rule:
+    """Rules generated from the button/gesture choices made in the ZHUB panel."""
+    try:
+        from zhub import actions
+
+        return Rule(actions.compile_rules(actions.load()), source=actions.ACTIONS_FILE)
+    except Exception as e:
+        logger.error("failed to load ZHUB actions\n%s", e)
+        return Rule([])
+
+
 def load_config_rule_file():
     """Loads user configured rules."""
     global rules
 
     if os.path.isfile(_file_path):
         rules = _load_rule_config(_file_path)
+    else:
+        rules = Rule([_logi_rules(), built_in_rules])
 
 
 def _load_rule_config(file_path: str) -> Rule:
@@ -1567,7 +1580,7 @@ def _load_rule_config(file_path: str) -> Rule:
                 logger.info("loaded %d rules from %s", len(loaded_rules), config_file.name)
     except Exception as e:
         logger.error("failed to load from %s\n%s", file_path, e)
-    return Rule([Rule(loaded_rules, source=file_path), built_in_rules])
+    return Rule([_logi_rules(), Rule(loaded_rules, source=file_path), built_in_rules])
 
 
 load_config_rule_file()

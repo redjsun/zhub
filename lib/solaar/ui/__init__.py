@@ -31,6 +31,7 @@ from solaar.ui.config_panel import record_setting
 from solaar.ui.window import find_device
 
 from . import common
+from .. import dbus_service
 from . import desktop_notifications
 from . import diversion_rules
 from . import tray
@@ -46,7 +47,7 @@ logger = logging.getLogger(__name__)
 assert Gtk.get_major_version() > 2, "Solaar requires Gtk 3 python bindings"
 
 
-APP_ID = "io.github.pwr_solaar.solaar"
+APP_ID = "io.github.zhub.Service"
 
 
 class GtkSignal(Enum):
@@ -62,6 +63,7 @@ def _startup(app, startup_hook, use_tray, show_window):
     if use_tray:
         tray.init(lambda _ignore: window.destroy())
     window.init(show_window, use_tray)
+    dbus_service.register(app, window.popup)
     startup_hook()
 
 
@@ -129,6 +131,7 @@ def _status_changed(device, alert, reason, refresh=False):
     if alert is None:
         alert = Alert.NONE
 
+    dbus_service.device_changed(device)
     tray.update(device)
     if alert & Alert.ATTENTION:
         tray.attention(reason)

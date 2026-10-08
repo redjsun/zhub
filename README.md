@@ -1,68 +1,69 @@
-# <img src="https://pwr-solaar.github.io/Solaar/img/solaar.svg" width="60px"/> Solaar
+# ZHUB
 
-Solaar is a Linux manager for many Logitech keyboards, mice, and other devices
-that connect wirelessly to a Unifying, Bolt, Lightspeed or Nano receiver
-as well as many Logitech devices that connect via a USB cable or Bluetooth.
-Solaar is not a device driver and responds only to special messages from devices
-that are otherwise ignored by the Linux input system.
+Painel para personalizar mouses e teclados Logitech no Linux, com visual moderno
+(GTK4 + libadwaita) e organização inspirada no Logi Options+.
 
-<a href="https://pwr-solaar.github.io/Solaar/index">More Information</a> -
-<a href="https://pwr-solaar.github.io/Solaar/usage">Usage</a> -
-<a href="https://pwr-solaar.github.io/Solaar/capabilities">Capabilities</a> -
-<a href="https://pwr-solaar.github.io/Solaar/rules">Rules</a> -
-<a href="https://pwr-solaar.github.io/Solaar/installation">Manual Installation</a> -
-<a href="https://pwr-solaar.github.io/Solaar/issues">Known Issues</a>
+> **Projeto não oficial.** O ZHUB é um fork do [Solaar](https://github.com/pwr-Solaar/Solaar)
+> e não tem nenhuma afiliação com a Logitech. "Logitech", "MX Master" e "Logi" são marcas
+> registradas dos seus donos.
 
+## O que dá para fazer
 
-[![codecov](https://codecov.io/gh/pwr-Solaar/Solaar/graph/badge.svg?token=D7YWFEWID6)](https://codecov.io/gh/pwr-Solaar/Solaar)
-[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](../LICENSE.txt)
+- **Botões**: um desenho interativo do mouse com pontos clicáveis em cada botão. Você
+  escolhe a ação num painel lateral: clique do meio, voltar/avançar, atalhos do GNOME,
+  copiar/colar, controles de mídia, um **atalho de teclado gravado na hora** ou **um
+  comando qualquer**.
+- **Gestos**: editor visual em cruz para o botão de gestos (clique, cima, baixo,
+  esquerda, direita), com predefinições (Navegação no GNOME, Mídia, Navegador, Janelas).
+- **Roda do polegar**: rolagem horizontal, volume, zoom, trocar de aba ou de workspace.
+- **Apontar e rolar**: DPI, SmartShift e sensibilidade, modo da roda, rolagem suave
+  e natural.
+- **Easy-Switch**: mostra os três canais e troca de computador.
+- Outros dispositivos suportados pelo Solaar aparecem com as configurações genéricas.
 
-<p align="center">
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-main-window-multiple.png" width="54%"/>
-  &#160;
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-main-window-receiver.png" width="43%"/>
-</p>
+Testado com o MX Master 3S via Bluetooth no Ubuntu 24.04 (GNOME, X11).
 
-<p align="center">
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-main-window-back-divert.png" width="49%"/>
-  &#160;
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-rule-editor.png" width="48%"/>
-</p>
+## Como funciona
 
-Solaar supports:
-- pairing/unpairing of devices with receivers
-- configuring device settings
-- custom button configuration
-- running rules in response to special messages from devices
+```
+ zhub (GTK4 + libadwaita)  ──D-Bus──▶  zhub-service (fork do Solaar, GTK3)
+   painel de configuração               fala HID++ com os dispositivos,
+   salva ~/.config/zhub/actions.yaml    aplica configurações e executa
+                                        atalhos, gestos e comandos
+```
 
-For more information see
-    <a href="https://pwr-solaar.github.io/Solaar/index">the main Solaar documentation page.</a> -
+- `lib/zhub/`: o painel novo (`app.py`, `pages.py`, `mouse_canvas.py`, `widgets.py`)
+  e o catálogo de ações (`actions.py`), que é compartilhado com o serviço.
+- `lib/solaar/dbus_service.py`: a interface D-Bus `io.github.zhub.Service1`.
+- `lib/logitech_receiver/diversion.py`: as ações do ZHUB viram regras do Solaar com
+  prioridade sobre o `~/.config/solaar/rules.yaml`, que continua funcionando para
+  regras avançadas.
 
+## Instalação (Ubuntu 24.04)
 
-## Installation Packages
+```bash
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-gtk-4.0 gir1.2-adw-1 \
+  gir1.2-ayatanaappindicator3-0.1 gir1.2-notify-0.7 python3-dbus python3-evdev \
+  python3-psutil python3-pyudev python3-xlib python3-yaml
 
-Up-to-date prebuilt packages are available for some Linux distros
-(e.g., Fedora) in their standard repositories.
-If a recent version of Solaar is not
-available from the standard repositories for your distribution, you can try
-one of these packages:
+git clone <este repositório> ~/zhub
+sudo install -m644 ~/zhub/rules.d-uinput/42-logitech-unify-permissions.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
 
-- Arch solaar package in the [extra repository][arch]
-- Ubuntu/Kubuntu package in [Solaar stable ppa][ppa stable]
-- NixOS Flake package in [Svenum/Solaar-Flake][nix flake]
+ln -s ~/zhub/bin/zhub ~/.local/bin/zhub
+ln -s ~/zhub/bin/zhub-service ~/.local/bin/zhub-service
+```
 
-Solaar is available from some other repositories
-but may be several versions behind the current version:
+Depois é só rodar `zhub`. O serviço sobe sozinho se não estiver rodando. Para iniciar
+o serviço junto com o login, crie `~/.config/autostart/zhub-service.desktop` com
+`Exec=zhub-service --window=hide`.
 
-- a [Debian package][debian], courtesy of Stephen Kitt
-- a Ubuntu package is available from [universe repository][ubuntu universe repository]
-- a [Gentoo package][gentoo], courtesy of Carlos Silva and Tim Harder
-- a [Mageia package][mageia], courtesy of David Geiger
+As configurações do dispositivo ficam em `~/.config/solaar/config.yaml` e as ações do
+painel em `~/.config/zhub/actions.yaml`.
 
-[ppa stable]: https://launchpad.net/~solaar-unifying/+archive/ubuntu/stable
-[arch]: https://www.archlinux.org/packages/extra/any/solaar/
-[gentoo]: https://packages.gentoo.org/packages/app-misc/solaar
-[mageia]: http://mageia.madb.org/package/show/release/cauldron/application/0/name/solaar
-[ubuntu universe repository]: http://packages.ubuntu.com/search?keywords=solaar&searchon=names&suite=all&section=all
-[nix flake]: https://github.com/Svenum/Solaar-Flake
-[debian]: https://packages.debian.org/search?keywords=solaar&searchon=names&suite=all&section=all
+## Licença e créditos
+
+GPL-2.0 ou posterior, como o Solaar original (veja `LICENSE.txt` e `COPYRIGHT`).
+Todo o trabalho de comunicação com os dispositivos é do projeto
+[Solaar](https://github.com/pwr-Solaar/Solaar) e seus colaboradores. O README original
+está em [`README.solaar.md`](README.solaar.md).
